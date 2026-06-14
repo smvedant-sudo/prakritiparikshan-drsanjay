@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="hi">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<title>आयुर्वेदिक प्रकृति परीक्षण पोर्टल</title>
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0f7d32">
+</head>
+
+<body>
+
+<div class="header">
+ <img src="logo.jpg" id="logo">
+<h1>🌿 आयुर्वेदिक प्रकृति परीक्षण पोर्टल 🌿</h1>
+
+<h3>
+राजकीय आयुर्वेद औषधालय /
+आयुष्मान आरोग्य मंदिर
+<span id="extraHospitalName"></span>
+</h3>
+
+<p>सर्वे सन्तु निरामयाः</p>
+<h4>
+कुल प्रतिभागी:
+<span id="participantCount">0</span>
+</h4>
+</div>
+
+<nav class="app-tabs" aria-label="Main sections">
+<button type="button" class="tab-button active" data-tab="home" onclick="switchTab('home')">Home</button>
+<button type="button" class="tab-button" data-tab="history" onclick="switchTab('history')">Inspection History</button>
+<button type="button" class="tab-button" data-tab="settings" onclick="switchTab('settings')">Settings</button>
+</nav>
+
+<main>
+<section id="homeTab" class="tab-panel active">
+
+<div class="card dashboard-card" id="dashboardSection">
+<div class="dashboard-header">
+<div>
+<h2>Dashboard</h2>
+<p>Saved prakriti report summary</p>
+</div>
+<button type="button" onclick="downloadExcel()">Export Excel</button>
+</div>
+
+<div class="dashboard">
+<div class="stat-box total-box">
+Total<br>
+<span id="dashboardTotal">0</span>
+</div>
+
+<div class="stat-box today-box">
+Today<br>
+<span id="dashboardToday">0</span>
+</div>
+
+<div class="stat-box vata-box">
+Vata<br>
+<span id="dashboardVata">0</span>
+</div>
+
+<div class="stat-box pitta-box">
+Pitta<br>
+<span id="dashboardPitta">0</span>
+</div>
+
+<div class="stat-box kapha-box">
+Kapha<br>
+<span id="dashboardKapha">0</span>
+</div>
+
+<div class="stat-box mixed-box">
+Mixed<br>
+<span id="dashboardMixed">0</span>
+</div>
+</div>
+
+<div class="dashboard-grid">
+<div class="dashboard-panel">
+<h3>Average Dosha Score</h3>
+<canvas id="dashboardChart" width="280" height="220"></canvas>
+</div>
+
+<div class="dashboard-panel">
+<h3>Latest Report</h3>
+<div class="latest-report">
+<p><strong>Report No:</strong> <span id="latestReportNo">-</span></p>
+<p><strong>Name:</strong> <span id="latestName">-</span></p>
+<p><strong>Prakriti:</strong> <span id="latestPrakriti">-</span></p>
+<p><strong>Date:</strong> <span id="latestDate">-</span></p>
+</div>
+</div>
+
+<div class="dashboard-panel">
+<h3>Coverage</h3>
+<p><strong>Districts:</strong> <span id="dashboardDistricts">0</span></p>
+<p><strong>Institutions:</strong> <span id="dashboardHospitals">0</span></p>
+<p><strong>Last Updated:</strong> <span id="dashboardUpdated">-</span></p>
+</div>
+</div>
+
+<div class="dashboard-panel recent-panel">
+<h3>Recent Inspections</h3>
+<div id="recentInspectionList" class="recent-list">
+No inspections saved yet.
+</div>
+</div>
+</div>
+
+<div class="card" id="participantSection">
+
+<h2>प्रतिभागी विवरण</h2>
+
+<label>फोटो</label>
+
+
+<button type="button"
+onclick="document.getElementById('photoBack').click()">
+📸 बैक कैमरा
+</button>
+
+<button type="button"
+onclick="document.getElementById('photoGallery').click()">
+🖼️ गैलरी
+</button>
+<video id="camera"
+width="320"
+height="240"
+autoplay
+style="display:none;border:1px solid #ccc;border-radius:10px;">
+</video>
+
+<canvas id="canvas" style="display:none;"></canvas>
+
+<button type="button" onclick="startCamera()">
+📷 कैमरा चालू करें
+</button>
+
+<button type="button" onclick="capturePhoto()">
+📸 फोटो लें
+</button>
+<input type="file"
+id="photoFront"
+accept="image/*"
+capture="user"
+style="display:none;">
+
+<input type="file"
+id="photoBack"
+accept="image/*"
+capture="environment"
+style="display:none;">
+
+<input type="file"
+id="photoGallery"
+accept="image/*"
+style="display:none;">
+<br>
+
+<img id="photoPreview" width="120" style="display:none;border:1px solid #ccc;border-radius:10px;">
+
+<div id="imageAnalysisPanel" class="image-analysis-panel">
+<h3>Photo Analysis</h3>
+<p id="imageAnalysisStatus">Photo upload/capture ke baad analysis yahan dikhega.</p>
+<div class="analysis-meter">
+<span>Vata</span>
+<div><i id="photoVataBar"></i></div>
+<strong><span id="photoVataScore">0</span>%</strong>
+</div>
+<div class="analysis-meter">
+<span>Pitta</span>
+<div><i id="photoPittaBar"></i></div>
+<strong><span id="photoPittaScore">0</span>%</strong>
+</div>
+<div class="analysis-meter">
+<span>Kapha</span>
+<div><i id="photoKaphaBar"></i></div>
+<strong><span id="photoKaphaScore">0</span>%</strong>
+</div>
+</div>
+
+<label>नाम</label> <input type="text" id="name">
+
+<label>आयु</label> <input type="number" id="age">
+
+<label>लिंग</label> <select id="gender">
+
+<option>पुरुष</option>
+<option>महिला</option>
+<option>अन्य</option>
+</select>
+
+<label>मोबाइल</label> <input type="text" id="mobile">
+
+<label>OPD No.</label> <input type="text" id="opdNo">
+
+<label>ग्राम / शहर</label> <input type="text" id="city">
+
+<label>जिला</label> <input type="text" id="district">
+
+<label>संस्थान का नाम</label> <input type="text" id="hospital">
+<label>हेडर में प्रदर्शित संस्थान का नाम</label>
+<input type="text"
+id="headerHospital"
+placeholder="राजकीय आयुर्वेद औषधालय / आयुष्मान आरोग्य मंदिर">
+<label>अतिरिक्त संस्थान/स्थान</label>
+<input type="text" id="extraHospital">
+
+<label>प्रभारी चिकित्सा अधिकारी</label> <input type="text" id="doctor">
+
+</div>
+
+<div class="card" id="questionSection">
+
+<h2>प्रकृति परीक्षण</h2>
+
+<div id="questions"></div>
+
+</div>
+
+<div class="card" id="actionButtons">
+
+<button onclick="calculateResult()">
+परिणाम देखें
+</button>
+<button onclick="window.print()">
+🖨️ रिपोर्ट प्रिंट करें
+</button>
+<button onclick="downloadExcel()">
+📊 Excel डाउनलोड करें
+</button>
+<button onclick="downloadPDF()">
+📄 PDF डाउनलोड करें
+</button>
+
+</div>
+
+<div id="resultSection" class="card prakriti-card" style="display:none;">
+<div class="report-header">
+
+<div class="logo-left">
+<img src="logo.jpg" width="90">
+</div>
+
+<div class="title-center">
+<h2>आयुर्वेदिक प्रकृति परीक्षण रिपोर्ट</h2>
+
+<p>
+राजकीय आयुर्वेद औषधालय / आयुष्मान आरोग्य मंदिर
+</p>
+
+<p>
+सर्वे सन्तु निरामयाः
+</p>
+</div>
+
+<div class="logo-right">
+<img src="logo.jpg" width="90">
+</div>
+
+</div>
+
+<hr>
+
+<h2 style="background:#0f7d32;
+color:white;
+padding:10px;
+border-radius:8px;">
+प्रकृति परिणाम
+</h2>
+<img id="reportPhoto"
+width="120"
+style="display:none;border:1px solid #000;border-radius:10px;float:right;">
+
+<p><strong>रिपोर्ट क्रमांक:</strong> <span id="reportNo"></span></p>
+<p><strong>दिनांक:</strong> <span id="reportDate"></span></p>
+<p><strong>समय:</strong> <span id="reportTime"></span></p>
+<p><strong>नाम:</strong> <span id="reportName"></span></p>
+<p><strong>आयु:</strong> <span id="reportAge"></span></p>
+<p><strong>लिंग:</strong> <span id="reportGender"></span></p>
+<p><strong>मोबाइल:</strong> <span id="reportMobile"></span></p>
+<p><strong>OPD No.:</strong> <span id="reportOpdNo"></span></p>
+<p><strong>ग्राम / शहर:</strong>
+<span id="reportCity"></span></p>
+
+<p><strong>जिला:</strong>
+<span id="reportDistrict"></span></p>
+
+<div style="clear:both;"></div>
+
+<p><strong>संस्थान:</strong> <span id="reportHospital"></span></p>
+
+<p><strong>प्रभारी चिकित्सा अधिकारी:</strong> <span id="reportDoctor"></span></p>
+
+<div class="score-container">
+
+<div class="score-box vata-box">
+वात<br>
+<span id="vataScore">0</span>%
+</div>
+
+<div class="score-box pitta-box">
+पित्त<br>
+<span id="pittaScore">0</span>%
+</div>
+
+<div class="score-box kapha-box">
+कफ<br>
+<span id="kaphaScore">0</span>%
+</div>
+
+</div>
+<h3 id="prakritiName">
+प्रमुख प्रकृति
+</h3>
+
+<p>
+<strong>निष्कर्ष:</strong>
+<span id="prakritiConclusion"></span>
+</p>
+
+<canvas id="prakritiChart"
+width="300"
+height="300"
+style="display:block;margin:20px auto;">
+</canvas>
+<div id="prakritiAdvice">
+यहाँ प्रकृति अनुसार सलाह दिखाई जाएगी।
+</div>
+<hr>
+
+<div style="margin-top:50px;">
+
+<div style="float:left;">
+प्रतिभागी हस्ताक्षर
+</div>
+
+<div style="float:right;text-align:center;">
+प्रभारी चिकित्सा अधिकारी
+<br><br><br>
+_________________
+</div>
+
+<div style="clear:both;"></div>
+
+</div>
+<hr>
+
+<div style="text-align:center;
+margin-top:20px;
+padding:10px;
+font-size:14px;
+color:#0f7d32;
+font-weight:bold;">
+
+🌿 Developed & Designed By 🌿<br>
+Dr. Sanjay Kumar Nagar
+
+</div>
+</div>
+
+</section>
+
+<section id="historyTab" class="tab-panel">
+<div class="card history-card">
+<div class="dashboard-header">
+<div>
+<h2>Inspection History</h2>
+<p>Previous prakriti inspections in list view</p>
+</div>
+<button type="button" onclick="downloadExcel()">Export Excel</button>
+</div>
+
+<div class="history-controls">
+<input type="search" id="historySearch" placeholder="Search name, mobile, OPD, district" oninput="renderInspectionHistory()">
+<select id="historyFilter" onchange="renderInspectionHistory()">
+<option value="all">All Prakriti</option>
+<option value="vata">Vata</option>
+<option value="pitta">Pitta</option>
+<option value="kapha">Kapha</option>
+<option value="mixed">Mixed</option>
+</select>
+</div>
+
+<div class="history-list-wrap">
+<table class="history-table">
+<thead>
+<tr>
+<th>Report No</th>
+<th>OPD No</th>
+<th>Date</th>
+<th>Name</th>
+<th>Mobile</th>
+<th>District</th>
+<th>Prakriti</th>
+<th>Scores</th>
+</tr>
+</thead>
+<tbody id="historyList">
+<tr>
+<td colspan="8" class="empty-history">No previous inspections saved.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+
+<section id="settingsTab" class="tab-panel">
+<div class="card settings-card">
+<h2>Settings</h2>
+
+<div class="settings-grid">
+<div class="settings-panel">
+<h3>Theme</h3>
+<div class="theme-options">
+<button type="button" class="theme-option theme-green active" data-theme="green" onclick="applyTheme('green')">Green</button>
+<button type="button" class="theme-option theme-blue" data-theme="blue" onclick="applyTheme('blue')">Blue</button>
+<button type="button" class="theme-option theme-maroon" data-theme="maroon" onclick="applyTheme('maroon')">Maroon</button>
+<button type="button" class="theme-option theme-dark" data-theme="dark" onclick="applyTheme('dark')">Dark</button>
+</div>
+</div>
+
+<div class="settings-panel">
+<h3>Offline</h3>
+<button type="button" onclick="downloadOfflineSite()">Download Offline Copy</button>
+<button type="button" id="installAppButton" onclick="installPortalApp()" disabled>Install App</button>
+<p class="settings-note">Install works when this portal is opened from localhost or HTTPS.</p>
+</div>
+
+<div class="settings-panel">
+<h3>Data</h3>
+<button type="button" onclick="downloadDataBackup()">Download Data Backup</button>
+<button type="button" class="danger-button" onclick="clearInspectionHistory()">Clear History</button>
+</div>
+</div>
+</div>
+</section>
+</main>
+
+<script src="app.js"></script>
+
+</body>
+</html>
+
