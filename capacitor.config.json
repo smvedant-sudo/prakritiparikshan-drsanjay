@@ -1,0 +1,6 @@
+{
+  "appId": "com.ayurprakriti.portal",
+  "appName": "Ayur Prakriti Portal",
+  "webDir": "./",
+  "bundledWebRuntime": false
+}

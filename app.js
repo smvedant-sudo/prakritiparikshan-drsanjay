@@ -3,127 +3,179 @@ let prakritiChart = null;
 let dashboardChart = null;
 let deferredInstallPrompt = null;
 let photoAnalysisResult = null;
+let currentQuestion = 0;
+let testStarted = false;
+
+function setupPwaFeatures(){
+if('serviceWorker' in navigator){
+navigator.serviceWorker.register('./sw.js').then(function(){
+console.log('Service worker registered');
+}).catch(function(err){
+console.error('Service worker failed', err);
+});
+}
+
+const installBtn = document.getElementById('installBtn');
+
+window.addEventListener('beforeinstallprompt', function(event){
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  if(installBtn){
+    installBtn.style.display = 'inline-flex';
+  }
+});
+
+window.addEventListener('appinstalled', function(){
+  if(installBtn){
+    installBtn.style.display = 'none';
+  }
+});
+
+if(installBtn){
+  installBtn.addEventListener('click', async function(){
+    if(!deferredInstallPrompt){
+      alert('इस ब्राउज़र में इंस्टॉलेशन विकल्प उपलब्ध नहीं है। कृपया Chrome/Edge में “Add to Home Screen” का उपयोग करें।');
+      return;
+    }
+    deferredInstallPrompt.prompt();
+    const choiceResult = await deferredInstallPrompt.userChoice;
+    if(choiceResult.outcome === 'accepted'){
+      console.log('User accepted install prompt');
+    }
+    deferredInstallPrompt = null;
+    installBtn.style.display = 'none';
+  });
+}
+
+if(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone){
+  if(installBtn){
+    installBtn.style.display = 'none';
+  }
+}
+}
+
+setupPwaFeatures();
 
 const questions = [
 {
-q:"1. आपकी शरीर संरचना कैसी है?",
+q:"1. आपकी शरीर संरचना कैसी है?\n1. What is your body constitution?",
 options:[
-["दुबली-पतली","vata"],
-["मध्यम","pitta"],
-["भारी/मजबूत","kapha"]
+["दुबली-पतली / Thin/Lean","vata"],
+["मध्यम / Moderate","pitta"],
+["भारी/मजबूत / Heavy/Strong","kapha"]
 ]
 },
 {
-q:"2. आपकी त्वचा कैसी है?",
+q:"2. आपकी त्वचा कैसी है?\n2. What is your skin like?",
 options:[
-["शुष्क","vata"],
-["गर्म","pitta"],
-["चिकनी","kapha"]
+["शुष्क / Dry","vata"],
+["गर्म / Warm","pitta"],
+["चिकनी / Smooth","kapha"]
 ]
 },
 {
-q:"3. आपकी भूख कैसी है?",
+q:"3. आपकी भूख कैसी है?\n3. What is your appetite like?",
 options:[
-["अनियमित","vata"],
-["तेज","pitta"],
-["सामान्य","kapha"]
+["अनियमित / Irregular","vata"],
+["तेज / Strong","pitta"],
+["सामान्य / Normal","kapha"]
 ]
 },
 {
-q:"4. आपकी पाचन शक्ति कैसी है?",
+q:"4. आपकी पाचन शक्ति कैसी है?\n4. How is your digestion?",
 options:[
-["कभी ठीक कभी खराब","vata"],
-["बहुत अच्छी","pitta"],
-["धीमी","kapha"]
+["कभी ठीक कभी खराब / Variable","vata"],
+["बहुत अच्छी / Very good","pitta"],
+["धीमी / Slow","kapha"]
 ]
 },
 {
-q:"5. आपकी नींद कैसी है?",
+q:"5. आपकी नींद कैसी है?\n5. What is your sleep like?",
 options:[
-["हल्की","vata"],
-["मध्यम","pitta"],
-["गहरी","kapha"]
+["हल्की / Light","vata"],
+["मध्यम / Moderate","pitta"],
+["गहरी / Deep","kapha"]
 ]
 },
 {
-q:"6. स्मरण शक्ति कैसी है?",
+q:"6. स्मरण शक्ति कैसी है?\n6. How is your memory?",
 options:[
-["जल्दी सीखता जल्दी भूलता","vata"],
-["अच्छी","pitta"],
-["धीरे सीखता लंबे समय तक याद","kapha"]
+["जल्दी सीखता जल्दी भूलता / Learns fast but forgets fast","vata"],
+["अच्छी / Good","pitta"],
+["धीरे सीखता लंबे समय तक याद / Learns slowly but remembers long","kapha"]
 ]
 },
 {
-q:"7. स्वभाव कैसा है?",
+q:"7. स्वभाव कैसा है?\n7. What is your temperament like?",
 options:[
-["चंचल","vata"],
-["नेतृत्वकारी","pitta"],
-["शांत","kapha"]
+["चंचल / Restless","vata"],
+["नेतृत्वकारी / Leadership-oriented","pitta"],
+["शांत / Calm","kapha"]
 ]
 },
 {
-q:"8. कौन सा मौसम कम सहन होता है?",
+q:"8. कौन सा मौसम कम सहन होता है?\n8. Which season is difficult for you?",
 options:[
-["ठंड","vata"],
-["गर्मी","pitta"],
-["नमी","kapha"]
+["ठंड / Cold","vata"],
+["गर्मी / Heat","pitta"],
+["नमी / Humidity","kapha"]
 ]
 },
 {
-q:"9. कार्य शैली कैसी है?",
+q:"9. कार्य शैली कैसी है?\n9. What is your work style?",
 options:[
-["जल्दी शुरू जल्दी बदलता","vata"],
-["योजनाबद्ध","pitta"],
-["धीरे लेकिन निरंतर","kapha"]
+["जल्दी शुरू जल्दी बदलता / Starts quickly and changes quickly","vata"],
+["योजनाबद्ध / Organized","pitta"],
+["धीरे लेकिन निरंतर / Slow but steady","kapha"]
 ]
 },
 {
-q:"10. ऊर्जा स्तर कैसा है?",
+q:"10. ऊर्जा स्तर कैसा है?\n10. What is your energy level?",
 options:[
-["अस्थिर","vata"],
-["स्थिर","pitta"],
-["धीमा लेकिन टिकाऊ","kapha"]
+["अस्थिर / Unstable","vata"],
+["स्थिर / Stable","pitta"],
+["धीमा लेकिन टिकाऊ / Slow but lasting","kapha"]
 ]
 },
 
 {
-q:"11. आपको सामान्यतः क्या अनुभव होता है?",
+q:"11. आपको सामान्यतः क्या अनुभव होता है?\n11. What do you usually experience?",
 options:[
-["हाथ-पैर ठंडे","vata"],
-["अधिक गर्मी","pitta"],
-["भारीपन","kapha"]
+["हाथ-पैर ठंडे / Cold hands and feet","vata"],
+["अधिक गर्मी / Excess heat","pitta"],
+["भारीपन / Heaviness","kapha"]
 ]
 },
 {
-q:"12. आपको कौन सी समस्या रहती है?",
+q:"12. आपको कौन सी समस्या रहती है?\n12. What problem do you usually face?",
 options:[
-["गैस/कब्ज","vata"],
-["अम्लपित्त","pitta"],
-["सुस्ती","kapha"]
+["गैस/कब्ज / Gas/Constipation","vata"],
+["अम्लपित्त / Acidity","pitta"],
+["सुस्ती / Lethargy","kapha"]
 ]
 },
 {
-q:"13. मानसिक स्थिति कैसी रहती है?",
+q:"13. मानसिक स्थिति कैसी रहती है?\n13. What is your mental state like?",
 options:[
-["चिंता","vata"],
-["क्रोध","pitta"],
-["संतोष","kapha"]
+["चिंता / Anxiety","vata"],
+["क्रोध / Anger","pitta"],
+["संतोष / Contentment","kapha"]
 ]
 },
 {
-q:"14. नींद से संबंधित अनुभव?",
+q:"14. नींद से संबंधित अनुभव?\n14. Sleep-related experience?",
 options:[
-["बार-बार जागना","vata"],
-["सपने अधिक","pitta"],
-["अधिक सोना","kapha"]
+["बार-बार जागना / Frequent waking","vata"],
+["सपने अधिक / More dreams","pitta"],
+["अधिक सोना / Sleeping more","kapha"]
 ]
 },
 {
-q:"15. वर्तमान स्वास्थ्य समस्या?",
+q:"15. वर्तमान स्वास्थ्य समस्या?\n15. Current health concern?",
 options:[
-["जोड़ों का दर्द","vata"],
-["त्वचा/अम्लपित्त","pitta"],
-["मोटापा/एलर्जी","kapha"]
+["जोड़ों का दर्द / Joint pain","vata"],
+["त्वचा/अम्लपित्त / Skin/Acidity","pitta"],
+["मोटापा/एलर्जी / Obesity/Allergies","kapha"]
 ]
 }
 
@@ -149,8 +201,10 @@ html += "</div>";
 container.innerHTML += html;
 
 });
+initializeTestUI();
 
 function calculateResult(){
+  
 
 let vata = 0;
 let pitta = 0;
@@ -174,6 +228,7 @@ if(selected.value==="kapha") kapha++;
 });
 
 let total = vata + pitta + kapha;
+
 if(total < 15){
 alert("कृपया सभी 15 प्रश्नों के उत्तर चुनें");
 return;
@@ -201,111 +256,150 @@ prakriti = "मिश्रित प्रकृति";
 if(prakriti === "वातज प्रकृति"){
 
 advice = `
-
+<div class="advice-card">
 <h3>वातज प्रकृति</h3>
+<p><b>प्रमुख लक्षण:</b> दुबला शरीर, शुष्क त्वचा, अनियमित भूख, शीघ्र थकान, चिंता की प्रवृत्ति तथा हल्की नींद जैसी विशेषताएँ दिखाई देती हैं।</p>
 
-<b>प्रमुख लक्षण:</b><br>
-दुबला शरीर, शुष्क त्वचा, अनियमित भूख, शीघ्र थकान, चिंता की प्रवृत्ति।<br><br>
+<div class="advice-block">
+<h4>🍲 आहार एवं जीवनशैली</h4>
+<ul>
+<li>गर्म, स्निग्ध एवं ताजा भोजन लें; यह वात को शांत करने में सहायक है।</li>
+<li>घी, तिल का तेल, दूध, खिचड़ी, मूंग दाल, गेहूँ और साग-सब्ज़ी नियमित रूप से लें।</li>
+<li>ठंडे पेय, सूखे खाद्य पदार्थ, अत्यधिक उपवास व बहुत अधिक यात्रा से बचें।</li>
+</ul>
+</div>
 
-<b>आहार सलाह:</b><br>
-• गर्म एवं ताजा भोजन लें।<br>
-• घी, तिल का तेल, दूध, खिचड़ी, मूंग दाल उपयोगी।<br>
-• ठंडे पेय, सूखे खाद्य पदार्थ एवं उपवास से बचें।<br><br>
+<div class="advice-block">
+<h4>🧘 दिनचर्या एवं विहार</h4>
+<ul>
+<li>नियमित समय पर सोएँ-जागें और संतुलित दिनचर्या अपनाएँ।</li>
+<li>हल्का मसाज, गरम पानी और पर्याप्त नींद से वात का संतुलन बना रहता है।</li>
+<li>अत्यधिक तनाव, शीत और देर रात तक जागने से बचें।</li>
+</ul>
+</div>
 
-<b>विहार:</b><br>
-• नियमित दिनचर्या रखें।<br>
-• पर्याप्त नींद लें।<br>
-• अत्यधिक यात्रा एवं जागरण से बचें।<br><br>
+<div class="advice-block">
+<h4>🌿 योग एवं प्राणायाम</h4>
+<ul>
+<li>अनुलोम-विलोम</li>
+<li>नाड़ी शोधन</li>
+<li>शवासन</li>
+<li>मकरासन</li>
+</ul>
+</div>
 
-<b>योग एवं प्राणायाम:</b><br>
-• अनुलोम-विलोम<br>
-• नाड़ी शोधन<br>
-• शवासन<br>
-• मकरासन<br><br>
-
-<b>विशेष सावधानी:</b><br>
-कब्ज, गैस, जोड़ों का दर्द एवं अनिद्रा की संभावना अधिक रहती है।
+<p><b>विशेष सावधानी:</b> यदि कब्ज, गैस, जोड़ों का दर्द या अनिद्रा बढ़ जाए तो आयुर्वेद चिकित्सक से परामर्श लें।</p>
+</div>
 `;
 
 }
 else if(prakriti === "पित्तज प्रकृति"){
 
 advice = `
-
+<div class="advice-card">
 <h3>पित्तज प्रकृति</h3>
+<p><b>प्रमुख लक्षण:</b> मध्यम शरीर, तीव्र भूख, अधिक पसीना, गर्मी सहन न होना, चिड़चिड़ापन और जल्दी क्रोध आने की प्रवृत्ति होती है।</p>
 
-<b>प्रमुख लक्षण:</b><br>
-मध्यम शरीर, तीव्र भूख, अधिक पसीना, गर्मी असहनीय, क्रोध की प्रवृत्ति।<br><br>
+<div class="advice-block">
+<h4>🍲 आहार एवं जीवनशैली</h4>
+<ul>
+<li>शीतल, मधुर तथा हल्का आहार लें, जिससे पित्त शांत रहे।</li>
+<li>नारियल पानी, आँवला, खीरा, तरबूज, छाछ, चावल और शीतल सब्ज़ियाँ उपयोगी हैं।</li>
+<li>तीखा, खट्टा, गरम, तला-भुना तथा अधिक मसालेदार भोजन कम करें।</li>
+</ul>
+</div>
 
-<b>आहार सलाह:</b><br>
-• शीतल एवं मधुर आहार लें।<br>
-• नारियल पानी, आँवला, खीरा, तरबूज उपयोगी।<br>
-• तीखा, खट्टा एवं तला भोजन कम लें।<br><br>
+<div class="advice-block">
+<h4>🧘 दिनचर्या एवं विहार</h4>
+<ul>
+<li>धूप और अत्यधिक गर्मी से बचें तथा पर्याप्त आराम करें।</li>
+<li>मानसिक तनाव कम रखें और शांत वातावरण अपनाएँ।</li>
+<li>अधिक परिश्रम, तेज़ क्रोध और लंबी धूप से बचना लाभदायक है।</li>
+</ul>
+</div>
 
-<b>विहार:</b><br>
-• धूप एवं अत्यधिक गर्मी से बचें।<br>
-• मानसिक तनाव कम रखें।<br><br>
+<div class="advice-block">
+<h4>🌿 योग एवं प्राणायाम</h4>
+<ul>
+<li>शीतली</li>
+<li>शीतकारी</li>
+<li>भ्रामरी</li>
+<li>योग निद्रा</li>
+</ul>
+</div>
 
-<b>योग एवं प्राणायाम:</b><br>
-• शीतली<br>
-• शीतकारी<br>
-• भ्रामरी<br>
-• योग निद्रा<br><br>
-
-<b>विशेष सावधानी:</b><br>
-अम्लपित्त, त्वचा रोग एवं चिड़चिड़ापन की संभावना रहती है।
+<p><b>विशेष सावधानी:</b> अम्लपित्त, त्वचा संबंधी समस्या या चिड़चिड़ापन बढ़ने पर चिकित्सकीय सलाह लें।</p>
+</div>
 `;
 
 }
 else if(prakriti === "कफज प्रकृति"){
 
 advice = `
-
+<div class="advice-card">
 <h3>कफज प्रकृति</h3>
+<p><b>प्रमुख लक्षण:</b> मजबूत शरीर, चिकनी त्वचा, शांत स्वभाव, गहरी नींद तथा वजन बढ़ने की प्रवृत्ति दिखाई देती है।</p>
 
-<b>प्रमुख लक्षण:</b><br>
-मजबूत शरीर, चिकनी त्वचा, शांत स्वभाव, गहरी नींद, वजन बढ़ने की प्रवृत्ति।<br><br>
+<div class="advice-block">
+<h4>🍲 आहार एवं जीवनशैली</h4>
+<ul>
+<li>हल्का, सुपाच्य और ताज़ा भोजन लें, जिससे कफ कम बने।</li>
+<li>शहद, अदरक, लहसुन, जौ, बाजरा, सब्ज़ियाँ और हल्का आहार लाभकारी है।</li>
+<li>मिठाई, दही, अधिक तैलीय और भारी भोजन कम करें।</li>
+</ul>
+</div>
 
-<b>आहार सलाह:</b><br>
-• हल्का एवं सुपाच्य भोजन लें।<br>
-• शहद, अदरक, लहसुन, जौ उपयोगी।<br>
-• मिठाई, दही एवं अधिक तैलीय भोजन कम लें।<br><br>
+<div class="advice-block">
+<h4>🧘 दिनचर्या एवं विहार</h4>
+<ul>
+<li>नियमित व्यायाम, तेज़ चाल से चलना और सक्रिय जीवनशैली अपनाएँ।</li>
+<li>आलस्य, दिन में लंबा आराम तथा अधिक नींद से बचें।</li>
+<li>खुली हवा में समय बिताना और पानी पर्याप्त मात्रा में पीना फ़ायदेमंद है।</li>
+</ul>
+</div>
 
-<b>विहार:</b><br>
-• नियमित व्यायाम करें।<br>
-• आलस्य एवं दिन में सोने से बचें।<br><br>
+<div class="advice-block">
+<h4>🌿 योग एवं प्राणायाम</h4>
+<ul>
+<li>सूर्य नमस्कार</li>
+<li>कपालभाति</li>
+<li>भस्त्रिका</li>
+<li>तेज़ चाल से भ्रमण</li>
+</ul>
+</div>
 
-<b>योग एवं प्राणायाम:</b><br>
-• सूर्य नमस्कार<br>
-• कपालभाति<br>
-• भस्त्रिका<br>
-• तेज चाल से भ्रमण<br><br>
-
-<b>विशेष सावधानी:</b><br>
-मोटापा, मधुमेह, एलर्जी एवं श्वास संबंधी विकारों की संभावना रहती है।
+<p><b>विशेष सावधानी:</b> मोटापा, एलर्जी, श्वास या सुस्ती बढ़ने पर चिकित्सकीय परामर्श लें।</p>
+</div>
 `;
 
 }
 else{
 
 advice = `
-
+<div class="advice-card">
 <h3>मिश्रित प्रकृति</h3>
+<p><b>विश्लेषण:</b> आपकी प्रकृति में दो या अधिक दोषों का संयुक्त प्रभाव पाया गया है, इसलिए संतुलन बनाए रखने पर विशेष ध्यान देना उचित है।</p>
 
-<b>विश्लेषण:</b><br>
-आपकी प्रकृति में दो या अधिक दोषों का संयुक्त प्रभाव पाया गया है।<br><br>
+<div class="advice-block">
+<h4>🍲 सामान्य आहार नियम</h4>
+<ul>
+<li>संतुलित, ताज़ा और सुपाच्य भोजन लें।</li>
+<li>अत्यधिक तला-भुना, तीखा, भारी और बहुत अधिक मीठा भोजन कम करें।</li>
+<li>प्रत्येक दिन पर्याप्त पानी पिएँ और भोजन का समय नियमित रखें।</li>
+</ul>
+</div>
 
-<b>आहार:</b><br>
-• संतुलित एवं ताजा भोजन लें।<br>
-• अत्यधिक तला, तीखा एवं भारी भोजन कम लें।<br><br>
+<div class="advice-block">
+<h4>🧘 जीवनशैली एवं दिनचर्या</h4>
+<ul>
+<li>नियमित रूप से सोएँ-जागें और मन को शांत रखें।</li>
+<li>हल्का योग, प्राणायाम और शांत वातावरण अपनाएँ।</li>
+<li>मौसम, आयु और वर्तमान स्वास्थ्य स्थिति के अनुसार आहार एवं गतिविधियाँ समायोजित करें।</li>
+</ul>
+</div>
 
-<b>योग:</b><br>
-• अनुलोम-विलोम<br>
-• भ्रामरी<br>
-• सूर्य नमस्कार<br><br>
-
-<b>विशेष सलाह:</b><br>
-ऋतु, आयु एवं वर्तमान स्वास्थ्य स्थिति के अनुसार चिकित्सकीय परामर्श लें।
+<p><b>विशेष सलाह:</b> यदि कोई लक्षण लगातार बने रहें तो ऋतु, आयु एवं स्वास्थ्य स्थिति के अनुसार आयुर्वेद चिकित्सक से परामर्श लें।</p>
+</div>
 `;
 
 }
@@ -377,17 +471,42 @@ document.getElementById("city").value;
 document.getElementById("reportDistrict").innerText =
 document.getElementById("district").value;
 
-document.getElementById("reportHospital").innerText =
-document.getElementById("hospital").value;
+const hospitalValue = document.getElementById("hospital").value;
+const cityValue = document.getElementById("city").value;
+const districtValue = document.getElementById("district").value;
+const defaultDoctorValue = localStorage.getItem("portalDoctor") || "";
+const doctorValue = (document.getElementById("doctor").value || defaultDoctorValue || "डॉ. नाम").trim();
+const doctorDisplayValue = doctorValue || "डॉ. नाम";
+if(document.getElementById("doctor")){
+document.getElementById("doctor").value = doctorDisplayValue;
+}
 
-document.getElementById("reportDoctor").innerText =
-document.getElementById("doctor").value;
+document.getElementById("reportHospital").innerText = hospitalValue;
+document.getElementById("reportCity").innerText = cityValue;
+document.getElementById("reportDistrict").innerText = districtValue;
+document.getElementById("reportDoctor").innerText = doctorDisplayValue;
+document.getElementById("reportDoctorSignature").innerText = doctorDisplayValue;
 
-document.getElementById("reportHospital").innerText =
-document.getElementById("hospital").value;
+const headerBaseText = "राजकीय आयुर्वेद औषधालय / आयुष्मान आरोग्य मंदिर";
+document.getElementById("headerHospitalName").innerText = hospitalValue ? headerBaseText + " - " + hospitalValue : headerBaseText;
 
-document.getElementById("reportDoctor").innerText =
-document.getElementById("doctor").value;
+const reportValues = [
+document.getElementById("reportName"),
+document.getElementById("reportAge"),
+document.getElementById("reportGender"),
+document.getElementById("reportMobile"),
+document.getElementById("reportOpdNo"),
+document.getElementById("reportCity"),
+document.getElementById("reportDistrict"),
+document.getElementById("reportHospital"),
+document.getElementById("reportDoctor")
+];
+reportValues.forEach(function(el){ if(el) el.style.visibility = "visible"; });
+
+localStorage.setItem("portalHospital", hospitalValue);
+localStorage.setItem("portalCity", cityValue);
+localStorage.setItem("portalDistrict", districtValue);
+localStorage.setItem("portalDoctor", doctorDisplayValue);
 document.getElementById("reportPhoto").src =
 document.getElementById("photoPreview").src;
 
@@ -433,7 +552,8 @@ city: document.getElementById("city").value,
 district: document.getElementById("district").value,
 hospital: document.getElementById("hospital").value,
 doctor: document.getElementById("doctor").value,
-
+photo:
+document.getElementById("photoPreview").src || "",
 vata: vataPercent,
 pitta: pittaPercent,
 kapha: kaphaPercent,
@@ -523,6 +643,8 @@ reader.readAsDataURL(file);
 });
 
 function downloadExcel() {
+    alert("Excel Start");
+alert(typeof XLSX);
 
 if(!window.XLSX){
 alert("Excel export library is not available offline.");
@@ -537,7 +659,28 @@ alert("कोई डेटा उपलब्ध नहीं है");
 return;
 }
 
-let worksheet = XLSX.utils.json_to_sheet(data);
+let cleanData = data.map(item => ({
+
+reportNo: item.reportNo,
+name: item.name,
+age: item.age,
+gender: item.gender,
+mobile: item.mobile,
+opdNo: item.opdNo,
+city: item.city,
+district: item.district,
+hospital: item.hospital,
+doctor: item.doctor,
+prakriti: item.prakriti,
+vata: item.vata,
+pitta: item.pitta,
+kapha: item.kapha,
+savedAt: item.savedAt
+
+}));
+
+let worksheet =
+XLSX.utils.json_to_sheet(cleanData);
 
 let workbook = XLSX.utils.book_new();
 
@@ -546,11 +689,26 @@ workbook,
 worksheet,
 "Prakriti Reports"
 );
+alert("Data Length: " + data.length);
+
+alert("Before Download");
+
+try{
 
 XLSX.writeFile(
 workbook,
 "Prakriti_Master_Report.xlsx"
 );
+
+alert("After Download");
+
+}catch(error){
+
+alert("Excel Error: " + error.message);
+console.log(error);
+
+}
+alert("After Download");
 
 }
 
@@ -816,7 +974,7 @@ getStoredPrakritiData();
 
 if(data.length === 0){
 historyList.innerHTML =
-`<tr><td colspan="8" class="empty-history">No previous inspections saved.</td></tr>`;
+`<tr><td colspan="9" class="empty-history">No previous inspections saved.</td></tr>`;
 return;
 }
 
@@ -880,6 +1038,19 @@ return `
 <td>${escapeHtml(item.district || "-")}</td>
 <td>${escapeHtml(item.prakriti || "-")}</td>
 <td>${escapeHtml(scores)}</td>
+
+<td>
+<button onclick="openHistoryReport('${item.reportNo}')">
+📄 Open
+</button>
+<button onclick="downloadHistoryPDF('${item.reportNo}')">
+🖨 PDF
+</button>
+<button onclick="deleteHistoryReport('${item.reportNo}')">
+🗑 Delete
+</button>
+</td>
+
 </tr>`;
 
 }).join("");
@@ -1144,9 +1315,68 @@ updateInstallButton(false);
 
 });
 
+function getPortalSettings(){
+return {
+hospital: localStorage.getItem("portalHospital") || "",
+doctor: localStorage.getItem("portalDoctor") || ""
+};
+}
+
+function savePortalSettings(){
+const rawDoctor = document.getElementById("settingsDoctor").value.trim();
+const settings = {
+hospital: document.getElementById("settingsHospital").value.trim(),
+doctor: rawDoctor
+};
+const savedDoctor = settings.doctor || "डॉ. नाम";
+
+localStorage.setItem("portalHospital", settings.hospital);
+localStorage.setItem("portalDoctor", savedDoctor);
+
+if(document.getElementById("hospital")){
+document.getElementById("hospital").value = settings.hospital;
+}
+if(document.getElementById("doctor")){
+document.getElementById("doctor").value = savedDoctor;
+}
+if(document.getElementById("headerHospital")){
+document.getElementById("headerHospital").value = settings.hospital;
+}
+if(document.getElementById("headerHospitalName")){
+const headerBaseText = "राजकीय आयुर्वेद औषधालय / आयुष्मान आरोग्य मंदिर";
+document.getElementById("headerHospitalName").innerText = settings.hospital ? headerBaseText + " - " + settings.hospital : headerBaseText;
+}
+alert("डिफ़ॉल्ट जानकारी सहेज ली गई है।");
+}
+
+function applyPortalSettingsToForm(){
+const settings = getPortalSettings();
+if(document.getElementById("settingsHospital")){
+document.getElementById("settingsHospital").value = settings.hospital;
+}
+if(document.getElementById("settingsDoctor")){
+document.getElementById("settingsDoctor").value = settings.doctor;
+}
+if(document.getElementById("hospital")){
+document.getElementById("hospital").value = settings.hospital;
+}
+if(document.getElementById("doctor")){
+const savedDoctor = (settings.doctor || localStorage.getItem("portalDoctor") || "डॉ. नाम").trim();
+document.getElementById("doctor").value = savedDoctor || "डॉ. नाम";
+}
+if(document.getElementById("headerHospital")){
+document.getElementById("headerHospital").value = settings.hospital;
+}
+if(document.getElementById("headerHospitalName")){
+const headerBaseText = "राजकीय आयुर्वेद औषधालय / आयुष्मान आरोग्य मंदिर";
+document.getElementById("headerHospitalName").innerText = settings.hospital ? headerBaseText + " - " + settings.hospital : headerBaseText;
+}
+}
+
 function initializeAppView(){
 
 applyTheme(localStorage.getItem("portalTheme") || "green");
+applyPortalSettingsToForm();
 
 let savedTab =
 localStorage.getItem("activePortalTab") || "home";
@@ -1218,50 +1448,98 @@ imageData;
 
 }
 async function downloadPDF(){
+const report = document.getElementById("resultSection");
 
-if(!window.jspdf || !window.html2canvas){
-alert("PDF export library is not available offline.");
+if(!report){
+alert("रिपोर्ट अनुभाग नहीं मिला।");
 return;
 }
 
+report.style.display = "block";
+report.style.position = "relative";
+report.style.background = "#fff";
+report.style.padding = "8px";
+report.style.width = "100%";
+report.style.maxWidth = "100%";
+report.style.boxSizing = "border-box";
+report.style.fontSize = "11px";
+report.style.lineHeight = "1.2";
+
+await new Promise(resolve => setTimeout(resolve, 250));
+
+const fallbackPrintPDF = () => {
+const printWindow = window.open("", "_blank", "width=900,height=700");
+
+if(!printWindow){
+window.print();
+return;
+}
+
+printWindow.document.write(`<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<title>आयुर्वेदिक प्रकृति परीक्षण रिपोर्ट</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+@page{margin:5mm; size:A4 portrait;}
+body{font-family:"Noto Sans Devanagari", Arial, sans-serif; margin:0; padding:4px; background:white; color:#111; box-sizing:border-box;}
+#resultSection{display:block !important; width:100%; margin:0; padding:6px 8px; border:1px solid #0f7d32; border-radius:10px; box-sizing:border-box; font-size:11px; line-height:1.2; page-break-inside:avoid; overflow:hidden;}
+.report-header{display:flex; justify-content:space-between; align-items:center; gap:8px; min-height:60px; margin-bottom:4px;}
+.logo-left, .logo-right{width:52px; min-width:52px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+.logo-left img, .logo-right img{width:48px; height:48px; object-fit:contain; display:block;}
+.title-center{flex:1; text-align:center; min-width:0; padding:0 4px;}
+.title-center h2{font-size:15px; margin:2px 0;}
+.title-center p{font-size:11px; margin:1px 0;}
+#prakritiName{font-size:18px; padding:6px; margin:8px 0;}
+.score-container{gap:6px; margin-top:8px;}
+.score-box{padding:6px; font-size:11px;}
+#reportPhoto{width:80px; height:80px; object-fit:cover; margin-bottom:6px;}
+img{max-width:100%; height:auto;}
+</style>
+</head>
+<body>${report.outerHTML}</body>
+</html>`);
+printWindow.document.close();
+setTimeout(() => {
+printWindow.focus();
+printWindow.print();
+}, 500);
+};
+
+try {
+if(window.jspdf && window.jspdf.jsPDF && window.html2canvas){
 const { jsPDF } = window.jspdf;
-
-const report =
-document.getElementById("resultSection");
-
-const canvas =
-await html2canvas(report,{
-scale:2
+const canvas = await window.html2canvas(report, {
+scale: 2,
+useCORS: true,
+allowTaint: true,
+width: report.scrollWidth,
+height: report.scrollHeight
 });
 
-const imgData =
-canvas.toDataURL("image/png");
+const imgData = canvas.toDataURL("image/png");
+const pdf = new jsPDF("p", "mm", "a4");
+const pdfWidth = pdf.internal.pageSize.getWidth();
+const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
-const pdf =
-new jsPDF("p","mm","a4");
-
-const pdfWidth =
-pdf.internal.pageSize.getWidth();
-
-const pdfHeight =
-(canvas.height * pdfWidth) / canvas.width;
-
-pdf.addImage(
-imgData,
-"PNG",
-0,
-0,
-pdfWidth,
-pdfHeight
-);
-
+pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
 pdf.save("Prakriti_Report.pdf");
+return;
+}
+}catch(error){
+console.error("PDF image export failed:", error);
+}
 
+fallbackPrintPDF();
 }
 document.getElementById("headerHospital").addEventListener("input", function(){
 
+const headerBaseText = "राजकीय आयुर्वेद औषधालय / आयुष्मान आरोग्य मंदिर";
 document.getElementById("headerHospitalName").innerText =
-this.value || "राजकीय आयुर्वेद औषधालय / आयुष्मान आरोग्य मंदिर";
+this.value ? headerBaseText + " - " + this.value : headerBaseText;
 
 });
 document.getElementById("extraHospital").addEventListener("input", function(){
@@ -1270,3 +1548,255 @@ document.getElementById("extraHospitalName").innerHTML =
 this.value ? "<br>" + this.value : "";
 
 });
+
+window.downloadPDF = downloadPDF;
+
+function initializeTestUI(){
+testStarted = false;
+const startScreen = document.getElementById("startScreen");
+const testContent = document.getElementById("testContent");
+const nextBtn = document.getElementById("nextBtn");
+const prevBtn = document.getElementById("prevBtn");
+const resultBtn = document.getElementById("resultBtn");
+
+if(startScreen) startScreen.style.display = "block";
+if(testContent) testContent.style.display = "none";
+if(nextBtn) nextBtn.style.display = "none";
+if(prevBtn) prevBtn.style.display = "none";
+if(resultBtn) resultBtn.style.display = "none";
+
+const progressText = document.getElementById("questionProgress");
+if(progressText) progressText.innerText = "प्रकृति परीक्षण शुरू करें";
+
+const progressBar = document.getElementById("progressBar");
+if(progressBar) progressBar.style.width = "0%";
+
+document.querySelectorAll(".question").forEach(q => q.classList.remove("active"));
+}
+
+function startPrakritiTest(){
+testStarted = true;
+const startScreen = document.getElementById("startScreen");
+const testContent = document.getElementById("testContent");
+if(startScreen) startScreen.style.display = "none";
+if(testContent) testContent.style.display = "block";
+showQuestion(0);
+}
+
+function showQuestion(index){
+currentQuestion = index;
+
+if(!testStarted) return;
+
+let questions =
+document.querySelectorAll(".question");
+
+questions.forEach(q =>
+q.classList.remove("active"));
+
+if(questions[index]){
+questions[index].classList.add("active");
+}
+
+let nextBtn =
+document.getElementById("nextBtn");
+let resultBtn =
+document.getElementById("resultBtn");
+
+if(index === questions.length - 1){
+
+nextBtn.style.display = "none";
+
+if(resultBtn){
+resultBtn.style.display = "inline-block";
+}
+
+}else{
+
+nextBtn.style.display = "inline-block";
+
+if(resultBtn){
+resultBtn.style.display = "none";
+}
+
+}
+document.getElementById("questionProgress").innerText =
+`प्रश्न ${index + 1} / ${questions.length}`;
+
+document.getElementById("progressBar").style.width =
+((index + 1) / questions.length * 100) + "%";
+}
+
+function nextQuestion(){
+
+let selected =
+document.querySelector(
+`input[name="q${currentQuestion}"]:checked`
+);
+
+if(!selected){
+alert("कृपया उत्तर चुनें");
+return;
+}
+
+let questions =
+document.querySelectorAll(".question");
+
+if(currentQuestion < questions.length - 1){
+currentQuestion++;
+showQuestion(currentQuestion);
+}
+
+}
+
+function prevQuestion(){
+
+if(currentQuestion > 0){
+currentQuestion--;
+showQuestion(currentQuestion);
+}
+
+}
+function openHistoryReport(reportNo){
+
+
+let data =
+getStoredPrakritiData();
+
+
+let report =
+data.find(x => x.reportNo == reportNo);
+
+
+if(!report){
+
+return;
+}
+
+document.getElementById("reportNo").innerText =
+report.reportNo || "";
+
+
+document.getElementById("reportDate").innerText =
+report.date || "";
+
+
+document.getElementById("reportNo").innerText =
+report.reportNo || "";
+
+document.getElementById("reportDate").innerText =
+report.date || "";
+
+document.getElementById("reportTime").innerText =
+report.time || "";
+document.getElementById("reportName").innerText =
+report.name;
+
+document.getElementById("reportMobile").innerText =
+report.mobile || "";
+
+
+document.getElementById("reportAge").innerText =
+report.age || "";
+
+document.getElementById("reportGender").innerText =
+report.gender || "";
+
+document.getElementById("reportOpdNo").innerText =
+report.opdNo || "";
+
+
+document.getElementById("reportCity").innerText =
+report.city || "";
+
+document.getElementById("reportDistrict").innerText =
+report.district || "";
+
+const hospitalField = document.getElementById("reportHospital");
+if(hospitalField){
+hospitalField.innerText = report.hospital || "";
+}
+
+const doctorField = document.getElementById("reportDoctor");
+if(doctorField){
+const doctorDisplay = (report.doctor || "डॉ. नाम").trim();
+doctorField.innerText = doctorDisplay || "डॉ. नाम";
+}
+const signatureDoctorField = document.getElementById("reportDoctorSignature");
+if(signatureDoctorField){
+const doctorDisplay = (report.doctor || "डॉ. नाम").trim();
+signatureDoctorField.innerText = doctorDisplay || "डॉ. नाम";
+}
+if(report.photo){
+
+document.getElementById("reportPhoto").src =
+report.photo;
+
+document.getElementById("reportPhoto").style.display =
+"block";
+
+}
+
+document.getElementById("vataScore").innerText =
+report.vata || 0;
+
+document.getElementById("pittaScore").innerText =
+report.pitta || 0;
+
+document.getElementById("kaphaScore").innerText =
+report.kapha || 0;
+
+document.getElementById("prakritiName").innerText =
+report.prakriti || "";
+const resultSection = document.getElementById("resultSection");
+if(resultSection){
+resultSection.style.display = "block";
+resultSection.style.visibility = "visible";
+}
+switchTab("home");
+setTimeout(function(){
+if(resultSection){
+resultSection.scrollIntoView({
+behavior:"smooth",
+block:"start"
+});
+}
+}, 100);
+
+}
+function deleteHistoryReport(reportNo){
+
+if(!confirm("क्या आप यह रिपोर्ट हटाना चाहते हैं?")){
+return;
+}
+
+let data =
+getStoredPrakritiData();
+
+data =
+data.filter(item =>
+item.reportNo !== reportNo
+);
+
+localStorage.setItem(
+"prakritiData",
+JSON.stringify(data)
+);
+
+renderInspectionHistory();
+updateDashboard();
+
+alert("रिपोर्ट सफलतापूर्वक हटाई गई");
+}
+async function downloadHistoryPDF(reportNo){
+openHistoryReport(reportNo);
+await new Promise(function(resolve){
+setTimeout(resolve, 1000);
+});
+try{
+await downloadPDF();
+}catch(error){
+console.error("History PDF export failed:", error);
+window.print();
+}
+}

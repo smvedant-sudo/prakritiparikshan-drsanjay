@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ऑफ़लाइन</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f2fff2; color: #0f7d32; display: grid; place-items: center; min-height: 100vh; margin: 0; text-align: center; padding: 20px; }
+    .box { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,.08); max-width: 420px; }
+    button { margin-top: 12px; padding: 10px 16px; border: none; border-radius: 8px; background: #0f7d32; color: white; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>आप ऑफ़लाइन हैं</h2>
+    <p>यह ऐप पहले से cache में उपलब्ध है। इंटरनेट कनेक्शन लौटने पर वापस खोलें।</p>
+    <button onclick="window.location.reload()">पुनः प्रयास करें</button>
+  </div>
+</body>
+</html>

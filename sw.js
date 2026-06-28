@@ -1,4 +1,4 @@
-const CACHE_NAME = "ayur-prakriti-portal-v1";
+const CACHE_NAME = "ayur-prakriti-portal-v2";
 
 const APP_ASSETS = [
   "./",
@@ -6,13 +6,16 @@ const APP_ASSETS = [
   "./style.css",
   "./app.js",
   "./logo.jpg",
-  "./manifest.webmanifest"
+  "./manifest.webmanifest",
+  "./offline.html"
 ];
 
 self.addEventListener("install", function(event){
   event.waitUntil(
     caches.open(CACHE_NAME).then(function(cache){
       return cache.addAll(APP_ASSETS);
+    }).then(function(){
+      return self.skipWaiting();
     })
   );
 });
@@ -29,6 +32,8 @@ self.addEventListener("activate", function(event){
             return caches.delete(name);
           })
       );
+    }).then(function(){
+      return self.clients.claim();
     })
   );
 });
@@ -38,9 +43,35 @@ self.addEventListener("fetch", function(event){
     return;
   }
 
+  const url = new URL(event.request.url);
+  if(url.origin !== self.location.origin){
+    return;
+  }
+
+  if(event.request.mode === "navigate"){
+    event.respondWith(
+      fetch(event.request).catch(function(){
+        return caches.match("./offline.html");
+      })
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then(function(cachedResponse){
-      return cachedResponse || fetch(event.request);
+      if(cachedResponse){
+        return cachedResponse;
+      }
+
+      return fetch(event.request).then(function(networkResponse){
+        const copy = networkResponse.clone();
+        caches.open(CACHE_NAME).then(function(cache){
+          cache.put(event.request, copy);
+        });
+        return networkResponse;
+      }).catch(function(){
+        return caches.match("./offline.html");
+      });
     })
   );
 });
