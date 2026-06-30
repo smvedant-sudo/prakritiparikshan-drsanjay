@@ -257,8 +257,8 @@ zoom:85%;
 #reportPhoto{
 display:block !important;
 margin-bottom:8px;
-width:90px;
-height:90px;
+width:85px;
+height:85px;
 }
 
 .score-container{
@@ -409,8 +409,8 @@ background:#673ab7;
 /* Chart */
 
 #prakritiChart{
-width:160px !important;
-height:160px !important;
+width:100px !important;
+height:100px !important;
 display:block;
 margin:10px auto;
 }
@@ -522,9 +522,9 @@ text-align:center;
 margin-bottom:15px;
 }
 
-.logo-left,
-.logo-right{
-width:100px;
+#reportPhoto{
+    width:85px;
+    height:85px;
 }
 
 .title-center{
@@ -533,7 +533,7 @@ flex:1;
 
 .title-center h2{
 margin:0;
-font-size:28px;
+font-size:22px;
 color:#0f7d32;
 border:none !important;
 }
