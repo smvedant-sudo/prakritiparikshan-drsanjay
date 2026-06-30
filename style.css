@@ -1105,3 +1105,75 @@ display:flex;
 }
 }
 
+
+/* ===== Mobile Report Fix ===== */
+
+@media (max-width:768px){
+
+.report-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:6px;
+}
+
+.logo-left,
+.logo-right{
+    width:60px;
+}
+
+.logo-left img,
+.logo-right img{
+    width:55px;
+    height:55px;
+}
+
+.title-center{
+    flex:1;
+}
+
+.title-center h2{
+    font-size:18px;
+    line-height:1.2;
+}
+
+.title-center p{
+    font-size:11px;
+}
+
+.report-top{
+    display:block;
+}
+
+.report-info{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:5px;
+}
+
+.report-photo-block{
+    margin:12px auto;
+    text-align:center;
+}
+
+#reportPhoto{
+    width:80px;
+    height:80px;
+}
+
+.score-container{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+
+.score-box{
+    padding:8px;
+    font-size:16px;
+}
+
+.score-box span{
+    font-size:24px;
+}
+
+}
